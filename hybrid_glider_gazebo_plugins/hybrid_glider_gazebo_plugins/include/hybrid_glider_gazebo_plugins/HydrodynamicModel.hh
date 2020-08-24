@@ -103,6 +103,39 @@ class HydrodynamicModel : public BuoyantObject
 
   /// \brief Temperature (not used by all models)
   protected: double temperature;
+
+  /// \brief Buoyancy pump position vector read from topic
+  protected: ignition::math::Vector3d pumpPos;
+
+  /// \brief Sliding mass position vector read from topic
+  protected: ignition::math::Vector3d massPos;
+
+  /// \brief total_mass
+  protected: double m;
+
+  /// \brief center of gravity
+  protected: double x_cg;
+
+  /// \brief ballast_radius
+  protected: double r_w;
+
+  /// \brief hull_length
+  protected: double l_h;
+
+  /// \brief hull_radius
+  protected: double r_h;
+
+  /// \brief hull_mass
+  protected: double m_h;
+
+  /// \brief shifter_mass
+  protected: double m_s;
+
+  /// \brief initial_mass_position
+  protected: double x_s_o;
+
+  /// \brief initial_ballast_position
+  protected: double x_w_o;
 };
 
 /// \brief Pointer to model

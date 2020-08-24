@@ -98,6 +98,21 @@ HydrodynamicModel::HydrodynamicModel(sdf::ElementPtr _sdf,
 
   // Initialize temperature (not used by all models)
   this->temperature = 0;
+
+  // Get ballast pump position and slinding mass position (fixed value for now)
+  this-> pumpPos = 0;
+  this-> massPos = 0;
+
+  // Get other parameters
+  this->m = 0; // total mass
+  this->x_cg = 0; // center of gravity
+  this->r_w = _sdf->Get<double>("ballast_radius");
+  this->l_h = _sdf->Get<double>("hull_length");
+  this->r_h = _sdf->Get<double>("hull_radius");
+  this->m_h = _sdf->Get<double>("hull_mass");
+  this->m_s = _sdf->Get<double>("shifter_mass");
+  this->x_s_o = _sdf->Get<double>("initial_mass_position");
+  this->x_w_o = _sdf->Get<double>("initial_ballast_position");
 }
 
 /////////////////////////////////////////////////
@@ -362,6 +377,53 @@ HMFossen::HMFossen(sdf::ElementPtr _sdf,
 void HMFossen::ApplyHydrodynamicForces(
   double _time, const ignition::math::Vector3d &_flowVelWorld)
 {
+  // ---- Mass calculation ----- //
+  // Ballast volume and mass
+  double V_B = (this->pumpPos).X()*PI*(this->r_w)*(this->r_w);
+  double m_w = V_B*this->fluidDensity;
+
+  // Total vehicle mass
+  double m = this->m_h + this->m_s + m_w;
+
+  // Moving mass position
+  double x_s = this->x_s_o + (this->massPos).X();
+
+  // Hull mass center (uniform hull mass distribution assumed)
+  double x_h = -this->m_s/this->m_h*this->x_s_o;
+
+  // Ballast tank mass center (pushing from front)
+  double x_w = this->x_w_o+(V_B/PI*(this->r_w)*(this->r_w));
+
+
+  // Center of gravity
+  this->x_cg = (x_h*this->m_h + x_s*this->m_s + x_w*m_w)/(this->m_h+this->m_s+m_w);
+
+  // ---- Inertial matrix calculation ----- //
+  double a = this->l_h/2.0; // half the length
+  double b = this->r_h;   // hull radius
+  // inertial matrix (Fossen p.42 (2.156))
+  double I_yy = 4.0/15.0*m*(b*b+a*a); double I_zz = I_yy;  double I_xx = 4.0/15.0*m*(b*b+b*b);
+  // physics::InertialPtr I_0 = this->link->GetInertial();
+  // physics::InertialPtr I_0;
+  // I_0->SetIXX(I_xx);  I_0->SetIYY(I_yy);  I_0->SetIZZ(I_zz);
+  // I_0->SetCoG(x_cg,0,0,0,0,0); I_0->SetMass(m);
+  
+
+  ignition::math::Vector3d CoG;
+  CoG.X(x_cg); CoG.Y(0.0); CoG.Z(0.0);
+
+  this->link->GetInertial()->SetCoG(CoG);
+  // this->link->GetInertial()->SetIXX(I_xx);
+
+  gzmsg << m << std::endl;
+  gzmsg << b << std::endl;
+  gzmsg << I_xx << std::endl;
+  gzmsg << I_yy << std::endl;
+  gzmsg << I_zz << std::endl;
+  gzmsg << this->link->GetInertial()->IXX() << std::endl<< std::endl;
+  // I_0->SetMass(m);  
+  // this->link->SetInertial(I_0);  this->m = m;
+
   // Link's pose
   ignition::math::Pose3d pose;
   ignition::math::Vector3d linVel, angVel;
